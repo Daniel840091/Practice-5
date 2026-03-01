@@ -1,40 +1,55 @@
 import re
 import json
 
-# Read file
 with open("raw.txt", "r", encoding="utf-8") as file:
     text = file.read()
 
-# Extract prices (example: 1250.50 or 1250)
-prices = re.findall(r"\d+\.\d+|\d+", text)
 
-# Convert to float and calculate total
-prices_float = [float(p) for p in prices]
-total = sum(prices_float)
+# 1. Extract product names
 
-# Extract product names (line before price)
-products = re.findall(r"([A-Za-zА-Яа-я\s]+)\s+\d+\.\d+|\d+", text)
+products = re.findall(r"\d+\.\s*\n(.+)", text)
 
-# Extract date (example: 12/03/2025 or 2025-03-12)
-date = re.search(r"\d{2}[/-]\d{2}[/-]\d{4}|\d{4}-\d{2}-\d{2}", text)
-date = date.group() if date else "Not found"
 
-# Extract time (example: 14:35)
-time = re.search(r"\d{2}:\d{2}", text)
-time = time.group() if time else "Not found"
+# 2. Extract item prices (строки после x)
 
-# Extract payment method (CASH / CARD)
-payment = re.search(r"CASH|CARD|Cash|Card", text)
-payment = payment.group() if payment else "Not found"
+prices_raw = re.findall(r"x\s*([\d\s]+,\d{2})", text)
 
-# Structured output
+
+prices = [float(p.replace(" ", "").replace(",", ".")) for p in prices_raw]
+
+
+# 3. Calculate total
+
+calculated_total = sum(prices)
+
+
+# 4. Extract TOTAL from receipt
+
+total_match = re.search(r"ИТОГО:\s*\n?([\d\s]+,\d{2})", text)
+receipt_total = total_match.group(1).replace(" ", "").replace(",", ".") if total_match else "Not found"
+
+
+# 5. Extract payment method
+
+payment = re.search(r"Банковская карта|Наличные", text)
+payment_method = payment.group() if payment else "Not found"
+
+
+# 6. Extract date and time
+
+datetime_match = re.search(r"\d{2}\.\d{2}\.\d{4}\s+\d{2}:\d{2}:\d{2}", text)
+datetime_value = datetime_match.group() if datetime_match else "Not found"
+
+
+# 7. Structured Output
+
 data = {
     "products": products,
-    "prices": prices_float,
-    "total": total,
-    "date": date,
-    "time": time,
-    "payment_method": payment
+    "prices": prices,
+    "calculated_total": calculated_total,
+    "receipt_total": receipt_total,
+    "payment_method": payment_method,
+    "datetime": datetime_value
 }
 
 print(json.dumps(data, indent=4, ensure_ascii=False))
